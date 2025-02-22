@@ -1,45 +1,36 @@
 import streamlit as st
-import gdown
-import tensorflow as tf
-import os
-
-# Define the Google Drive link (Replace with your actual link)
-gdrive_link = "https://drive.google.com/file/d/1-BCKd-ssavT3O8HQ-NSeP1fuswuMDeMa/view?usp=drive_link"
-
-# Download the model file
-model_path = "vgg_finetuned_full.tflite"
-
-if not os.path.exists(model_path):
-    st.info("Downloading the model file... (This happens only once)")
-    gdown.download(gdrive_link, model_path, quiet=False)
+import numpy as np
+import pickle
+from tensorflow.keras.models import load_model
+from PIL import Image
 
 # Load the model
-st.info("Loading model...")
-model = tf.keras.models.load_model(model_path)
-st.success("Model loaded successfully!")
+model = load_model("vgg_finetuned_full.h5")
 
-# Sample UI
+# Define class names
+class_names = ['gun', 'knife', 'safe']
+
+# Streamlit App Title
 st.title("Weapon Detection Model")
-st.write("Upload an image to classify it.")
+st.write("Upload an image to detect if it is a gun, knife, or a safe object.")
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
+# Image uploader
+uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
 
-if uploaded_file:
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-    st.write("Processing...")
-
-    # Preprocess the image
-    from PIL import Image
-    import numpy as np
-
+if uploaded_file is not None:
     image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
+    
+    # Preprocess the image
     image = image.resize((224, 224))
-    image_array = np.array(image) / 255.0
-    image_array = np.expand_dims(image_array, axis=0)
+    img_array = np.array(image) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
 
-    # Predict
-    predictions = model.predict(image_array)
-    predicted_class = np.argmax(predictions, axis=-1)
+    # Predict using the model
+    predictions = model.predict(img_array)
+    predicted_class = class_names[np.argmax(predictions[0])]
+    confidence = np.max(predictions[0]) * 100
 
-    class_names = ["gun", "knife", "safe"]
-    st.write(f"Predicted Class: {class_names[predicted_class[0]]}")
+    # Show prediction
+    st.write(f"Predicted Class: **{predicted_class}**")
+    st.write(f"Confidence: **{confidence:.2f}%**")
