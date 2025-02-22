@@ -1,6 +1,6 @@
 import os
 import requests
-import tensorflow.lite as tflite
+import tensorflow as tf
 import numpy as np
 from PIL import Image
 import streamlit as st
@@ -8,15 +8,15 @@ import streamlit as st
 # ------------------------------
 # 🔹 Google Drive Model Download
 # ------------------------------
-FILE_ID = "1-BCKd-ssavT3O8HQ-NSeP1fuswuMDeMa"
+FILE_ID = "1-73vXzdGyEPuFz4BikMpHrlOA5PnGtU0"  # Updated to your H5 model ID
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
-MODEL_PATH = "vgg_golden_model.tflite"
-EXPECTED_SIZE_MB = 105  # Adjust based on actual model size
+MODEL_PATH = "vgg_finetuned_model.h5"
+EXPECTED_SIZE_MB = 100  # Adjust based on actual model size
 
 def download_model():
-    """Download the TFLite model from Google Drive if it does not exist."""
+    """Download the H5 model from Google Drive if it does not exist."""
     if not os.path.exists(MODEL_PATH):
-        st.info("Downloading TFLite model (this may take a few minutes)...")
+        st.info("Downloading H5 model (this may take a few minutes)...")
         try:
             response = requests.get(MODEL_URL, stream=True)
             if response.status_code == 200:
@@ -27,7 +27,7 @@ def download_model():
                 
                 # Check file size after download
                 downloaded_size = os.path.getsize(MODEL_PATH) / (1024 * 1024)
-                if downloaded_size < (EXPECTED_SIZE_MB * 0.9):  # Allow some margin
+                if downloaded_size < (EXPECTED_SIZE_MB * 0.9):  # Allow 10% margin
                     st.error(f"Model download failed! File too small ({downloaded_size:.2f} MB)")
                     os.remove(MODEL_PATH)  # Delete corrupt file
                     return
@@ -41,15 +41,14 @@ def download_model():
 download_model()
 
 # ------------------------------
-# 🔹 Load TFLite Model
+# 🔹 Load the H5 Model in Streamlit
 # ------------------------------
 @st.cache_resource
 def load_model():
-    """Load the TensorFlow Lite model into an interpreter."""
+    """Load the TensorFlow Keras H5 model."""
     try:
-        interpreter = tflite.Interpreter(model_path=MODEL_PATH)
-        interpreter.allocate_tensors()
-        return interpreter
+        model = tf.keras.models.load_model(MODEL_PATH)
+        return model
     except Exception as e:
         st.error(f"Failed to load model: {str(e)}")
         return None
@@ -68,22 +67,17 @@ def preprocess_image(image, target_size=(224, 224)):
 # ------------------------------
 # 🔹 Run Inference on Image
 # ------------------------------
-def predict(image, interpreter):
-    """Perform inference using the TFLite model."""
-    if interpreter is None:
+def predict(image, model):
+    """Perform inference using the Keras model."""
+    if model is None:
         return "Error", 0.0
 
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-
     image = preprocess_image(image)
-    interpreter.set_tensor(input_details[0]['index'], image)
-    interpreter.invoke()
-    output = interpreter.get_tensor(output_details[0]['index'])
-
-    classes = ["Gun", "Knife", "Safe"]
-    predicted_class = classes[np.argmax(output)]
-    confidence = np.max(output) * 100  # Convert to percentage
+    predictions = model.predict(image)
+    
+    classes = ["Gun", "Knife", "Safe"]  # Update class labels based on your model output
+    predicted_class = classes[np.argmax(predictions)]
+    confidence = np.max(predictions) * 100  # Convert to percentage
 
     return predicted_class, confidence
 
@@ -99,8 +93,8 @@ if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="📷 Uploaded Image", use_column_width=True)
 
-    interpreter = load_model()
-    prediction, confidence = predict(image, interpreter)
+    model = load_model()  # Load H5 model
+    prediction, confidence = predict(image, model)
 
     st.markdown(f"### 🎯 Prediction: **{prediction}**")
     st.markdown(f"### 🔥 Confidence: **{confidence:.2f}%**")
@@ -111,8 +105,5 @@ if uploaded_file:
     else:
         st.warning("⚠️ Weapon detected! Further inspection recommended.")
 
-# ------------------------------
-# 🔹 Footer
-# ------------------------------
 st.markdown("---")
-st.write("🚀 **Built with Streamlit & TensorFlow Lite**")
+st.write("🚀 **Built with Streamlit & TensorFlow**")
