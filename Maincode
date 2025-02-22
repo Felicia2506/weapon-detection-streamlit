@@ -1,0 +1,7 @@
+git clone https://github.com/Felicia2506/weapon-detection-streamlit.git
+cd weapon-detection-streamlit
+git add app.py vgg_finetuned_full.h5 requirements.txt
+git commit -m "Initial commit - Streamlit app"
+git branch -M main
+git remote add origin https://github.com/Felicia2506/weapon-detection-streamlit.git
+git push -u origin main
