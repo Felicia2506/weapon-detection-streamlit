@@ -11,11 +11,12 @@ import streamlit as st
 FILE_ID = "1-BCKd-ssavT3O8HQ-NSeP1fuswuMDeMa"
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
 MODEL_PATH = "vgg_golden_model.tflite"
+EXPECTED_SIZE_MB = 105  # Adjust based on actual model size
 
-# Function to download model if not available locally
 def download_model():
+    """Download the TFLite model from Google Drive if it does not exist."""
     if not os.path.exists(MODEL_PATH):
-        st.info("Downloading TFLite model (this may take a moment)...")
+        st.info("Downloading TFLite model (this may take a few minutes)...")
         try:
             response = requests.get(MODEL_URL, stream=True)
             if response.status_code == 200:
@@ -23,13 +24,20 @@ def download_model():
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
-                st.success("TFLite model downloaded successfully! ✅")
+                
+                # Check file size after download
+                downloaded_size = os.path.getsize(MODEL_PATH) / (1024 * 1024)
+                if downloaded_size < (EXPECTED_SIZE_MB * 0.9):  # Allow some margin
+                    st.error(f"Model download failed! File too small ({downloaded_size:.2f} MB)")
+                    os.remove(MODEL_PATH)  # Delete corrupt file
+                    return
+                
+                st.success(f"Model downloaded successfully! ✅ ({downloaded_size:.2f} MB)")
             else:
                 st.error(f"Error downloading model! HTTP Status: {response.status_code}")
         except Exception as e:
             st.error(f"Download failed: {str(e)}")
 
-# Call the function before running inference
 download_model()
 
 # ------------------------------
@@ -37,6 +45,7 @@ download_model()
 # ------------------------------
 @st.cache_resource
 def load_model():
+    """Load the TensorFlow Lite model into an interpreter."""
     try:
         interpreter = tflite.Interpreter(model_path=MODEL_PATH)
         interpreter.allocate_tensors()
@@ -49,7 +58,8 @@ def load_model():
 # 🔹 Preprocess Image Function
 # ------------------------------
 def preprocess_image(image, target_size=(224, 224)):
-    image = image.convert("RGB")  # Ensure image is RGB
+    """Convert image to model-compatible format."""
+    image = image.convert("RGB")  # Ensure it's RGB
     image = image.resize(target_size)  # Resize to model input size
     image = np.array(image).astype(np.float32) / 255.0  # Normalize
     image = np.expand_dims(image, axis=0)  # Add batch dimension
@@ -59,6 +69,7 @@ def preprocess_image(image, target_size=(224, 224)):
 # 🔹 Run Inference on Image
 # ------------------------------
 def predict(image, interpreter):
+    """Perform inference using the TFLite model."""
     if interpreter is None:
         return "Error", 0.0
 
