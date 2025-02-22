@@ -1,7 +1,5 @@
-
 streamlit
 tensorflow
-tflite-runtime
 opencv-python
 Pillow
 numpy
