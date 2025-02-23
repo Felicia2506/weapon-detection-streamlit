@@ -6,7 +6,7 @@ from PIL import Image
 import streamlit as st
 
 # ------------------------------
-# 🔹 Google Drive Model Download
+# 🔹 Google Drive Model Download (TFL3 Model)
 # ------------------------------
 FILE_ID = "1UrD7mm1BXfe99z-7pd4-3fkxyJImXSCc"
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
@@ -16,7 +16,7 @@ EXPECTED_SIZE_MB = 100  # Adjust based on actual model size
 def download_model():
     """Download the TFLite model from Google Drive if it does not exist."""
     if not os.path.exists(MODEL_PATH):
-        st.info("Downloading TFLite model (this may take a few minutes)...")
+        st.info("📥 Downloading TFLite model (this may take a few minutes)...")
         try:
             response = requests.get(MODEL_URL, stream=True)
             if response.status_code == 200:
@@ -25,33 +25,33 @@ def download_model():
                         if chunk:
                             f.write(chunk)
                 
-                # Check file size after download
+                # ✅ Check file size after download
                 downloaded_size = os.path.getsize(MODEL_PATH) / (1024 * 1024)
                 if downloaded_size < (EXPECTED_SIZE_MB * 0.9):  # Allow some margin
-                    st.error(f"Model download failed! File too small ({downloaded_size:.2f} MB)")
+                    st.error(f"❌ Model download failed! File too small ({downloaded_size:.2f} MB)")
                     os.remove(MODEL_PATH)  # Delete corrupt file
                     return
                 
-                st.success(f"Model downloaded successfully! ✅ ({downloaded_size:.2f} MB)")
+                st.success(f"✅ Model downloaded successfully! ({downloaded_size:.2f} MB)")
             else:
-                st.error(f"Error downloading model! HTTP Status: {response.status_code}")
+                st.error(f"❌ Error downloading model! HTTP Status: {response.status_code}")
         except Exception as e:
-            st.error(f"Download failed: {str(e)}")
+            st.error(f"❌ Download failed: {str(e)}")
 
 download_model()
 
 # ------------------------------
-# 🔹 Load TFLite Model
+# 🔹 Load TFLite Model with TFL3 Model Identifier
 # ------------------------------
 @st.cache_resource
 def load_model():
-    """Load the TensorFlow Lite model into an interpreter."""
+    """Load the TensorFlow Lite model into an interpreter using TFL3."""
     try:
-        interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+        interpreter = tflite.Interpreter(model_path=MODEL_PATH, experimental_delegates=[tflite.experimental.load_delegate("libedgetpu.so.1")])
         interpreter.allocate_tensors()
         return interpreter
     except Exception as e:
-        st.error(f"Failed to load model: {str(e)}")
+        st.error(f"❌ Failed to load model: {str(e)}")
         return None
 
 # ------------------------------
@@ -90,7 +90,7 @@ def predict(image, interpreter):
 # ------------------------------
 # 🔹 Streamlit UI Setup
 # ------------------------------
-st.title("🔍 X-ray Weapon Detection")
+st.title("🔍 X-ray Weapon Detection (TFL3 Model)")
 st.write("Upload an X-ray image to classify whether it contains a **Gun, Knife, or is Safe**.")
 
 uploaded_file = st.file_uploader("📤 Upload an Image (JPG, PNG, JPEG)", type=["jpg", "png", "jpeg"])
@@ -115,4 +115,4 @@ if uploaded_file:
 # 🔹 Footer
 # ------------------------------
 st.markdown("---")
-st.write("🚀 **Built with Streamlit & TensorFlow Lite**")
+st.write("🚀 **Built with Streamlit & TensorFlow Lite (TFL3)**")
