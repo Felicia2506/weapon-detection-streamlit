@@ -6,11 +6,11 @@ from PIL import Image
 import streamlit as st
 
 # ------------------------------
-# 🔹 Google Drive Model Download (TFL3 Model)
+# 🔹 Google Drive Model Download
 # ------------------------------
 FILE_ID = "1UrD7mm1BXfe99z-7pd4-3fkxyJImXSCc"
 MODEL_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
-MODEL_PATH = "vgg_golden_model.tflite"
+MODEL_PATH = "vgg_finetuned_model.tflite"
 EXPECTED_SIZE_MB = 100  # Adjust based on actual model size
 
 def download_model():
@@ -25,7 +25,7 @@ def download_model():
                         if chunk:
                             f.write(chunk)
                 
-                # ✅ Check file size after download
+                # Check file size after download
                 downloaded_size = os.path.getsize(MODEL_PATH) / (1024 * 1024)
                 if downloaded_size < (EXPECTED_SIZE_MB * 0.9):  # Allow some margin
                     st.error(f"❌ Model download failed! File too small ({downloaded_size:.2f} MB)")
@@ -41,13 +41,13 @@ def download_model():
 download_model()
 
 # ------------------------------
-# 🔹 Load TFLite Model with TFL3 Model Identifier
+# 🔹 Load TFLite Model (No Edge TPU)
 # ------------------------------
 @st.cache_resource
 def load_model():
-    """Load the TensorFlow Lite model into an interpreter using TFL3."""
+    """Load the TensorFlow Lite model into an interpreter (without Edge TPU)."""
     try:
-        interpreter = tflite.Interpreter(model_path=MODEL_PATH, experimental_delegates=[tflite.experimental.load_delegate("libedgetpu.so.1")])
+        interpreter = tflite.Interpreter(model_path=MODEL_PATH)  # ✅ No TPU dependency
         interpreter.allocate_tensors()
         return interpreter
     except Exception as e:
@@ -90,7 +90,7 @@ def predict(image, interpreter):
 # ------------------------------
 # 🔹 Streamlit UI Setup
 # ------------------------------
-st.title("🔍 X-ray Weapon Detection (TFL3 Model)")
+st.title("🔍 X-ray Weapon Detection")
 st.write("Upload an X-ray image to classify whether it contains a **Gun, Knife, or is Safe**.")
 
 uploaded_file = st.file_uploader("📤 Upload an Image (JPG, PNG, JPEG)", type=["jpg", "png", "jpeg"])
@@ -115,4 +115,4 @@ if uploaded_file:
 # 🔹 Footer
 # ------------------------------
 st.markdown("---")
-st.write("🚀 **Built with Streamlit & TensorFlow Lite (TFL3)**")
+st.write("🚀 **Built with Streamlit & TensorFlow Lite**")
